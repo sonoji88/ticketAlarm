@@ -2,7 +2,7 @@ name: 인터파크 취소표 모니터
 
 on:
   schedule:
-    - cron: "* * * * *"
+    - cron: "*/10 * * * *"
   workflow_dispatch:
 
 jobs:
