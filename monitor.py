@@ -2,9 +2,6 @@ import requests
 import os
 from datetime import datetime
 
-# ─────────────────────────────────────────
-#  설정값
-# ─────────────────────────────────────────
 GOODS_CODE = "26005547"
 PERF_URL   = f"https://tickets.interpark.com/goods/{GOODS_CODE}"
 BASE_URL   = "https://api-ticketfront.interpark.com"
@@ -12,12 +9,8 @@ BASE_URL   = "https://api-ticketfront.interpark.com"
 BOT_TOKEN  = os.environ["BOT_TOKEN"]
 CHAT_ID    = os.environ["CHAT_ID"]
 
-# 모니터링할 날짜 (YYYYMMDD)
 PLAY_DATES = ["20260613"]
 
-# ─────────────────────────────────────────
-#  헤더 (sec-ch-ua 없으면 403)
-# ─────────────────────────────────────────
 HEADERS = {
     "sec-ch-ua-platform": '"macOS"',
     "referer": "https://tickets.interpark.com/",
@@ -32,23 +25,18 @@ HEADERS = {
     "sec-ch-ua-mobile": "?0",
 }
 
-# ─────────────────────────────────────────
-#  잔여석 조회
-# ─────────────────────────────────────────
 def check_remain(play_date: str):
     url = f"{BASE_URL}/v1/goods/{GOODS_CODE}/playSeq/PlayDate/{play_date}/ALL"
     try:
         resp = requests.get(url, headers=HEADERS, timeout=10)
         resp.raise_for_status()
         data = resp.json()
+        print(f"  [디버그] API 응답: {data.get('data', {})}")
         return data.get("data", {}).get("remainSeat", [])
     except Exception as e:
         print(f"[오류] {play_date} 조회 실패: {e}")
         return None
 
-# ─────────────────────────────────────────
-#  텔레그램 알림
-# ─────────────────────────────────────────
 def send_telegram(message: str):
     try:
         resp = requests.post(
@@ -61,9 +49,6 @@ def send_telegram(message: str):
     except Exception as e:
         print(f"[오류] 텔레그램 전송 실패: {e}")
 
-# ─────────────────────────────────────────
-#  메인
-# ─────────────────────────────────────────
 def main():
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 취소표 확인 시작")
     available_list = []
@@ -78,10 +63,13 @@ def main():
 
         print(f"  [{formatted}] remainSeat: {remain}")
 
-        if len(remain) > 0:
+        # 잔여석 1개 이상인 것만 필터링
+        available = [r for r in remain if int(r.get('remainCnt', 0)) > 0]
+
+        if available:
             seats_text = "\n".join([
-                f"  ✅ {r.get('playSeqName', '회차')} — 잔여 {r.get('remainCnt', '?')}석"
-                for r in remain
+                f"  ✅ {r.get('gradeNm', r.get('playSeqName', '구역'))} — 잔여 {r.get('remainCnt', '?')}석"
+                for r in available
             ])
             available_list.append(f"📅 {formatted}\n{seats_text}")
 
